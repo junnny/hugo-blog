@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Jun</title>
+    <link>/tags/vps/index.xml</link>
+    <description>Recent content on Jun</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <atom:link href="/tags/vps/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>VPS 流量限制</title>
+      <link>/post/vps-traffic-control/</link>
+      <pubDate>Tue, 25 Oct 2016 16:31:10 +0800</pubDate>
+      
+      <guid>/post/vps-traffic-control/</guid>
+      <description>&lt;p&gt;好多 VPS 主机商都有每月流量限制，有的超出限额之后会断网，有的会继续可用，但是超出限额部分流量会按照更高的价格计费。
+下面是一个通过 &lt;code&gt;iptables&lt;/code&gt; 规则来限制每月总流量的方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;# VPS 服务器限流，每月总流量 2T 
+iptables -F OUTPUT 
+iptables -P OUTPUT ACCEPT 
+iptables -A OUTPUT -m quota --quota 2199023255552 -j ACCEPT 
+iptables -A OUTPUT -j DROP 
+
+# 备份 iptables 规则，用于重启机器时导入
+iptables-save &amp;gt; /opt/iptables.bak 
+
+# 开机联网导入 iptables 配置 
+#!/bin/sh 
+/sbin/iptables-restore &amp;lt; /opt/iptables.bak 
+
+# cron 定时任务，每月的 1 日 5 时 1 分清空流量计数器重新计数
+1 5 1 * * root /sbin/iptables -Z OUTPUT
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果机器偶尔重启， iptables 的流量计数器是会清零之后重新计数的。所以更保险的做法是流量平均按天限制：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;# VPS 服务器限流 每天总流量 68G
+iptables -F quota68g 
+iptables -F OUTPUT 
+iptables -P OUTPUT ACCEPT 
+iptables -A OUTPUT -j quota68g 
+
+iptables -N quota68g 
+iptables -A quota68g -m quota --quota 73014444032 -j RETURN 
+iptables -A quota68g -j DROP 
+
+iptables-save &amp;gt; /opt/iptables.bak 
+
+# 开机联网导入 iptables 配置 
+#!/bin/sh 
+/sbin/iptables-restore &amp;lt; /opt/iptables.bak 
+
+# cron 每天的 5 时 1 分 重新计数
+1 5 * * * /sbin/iptables -Z quota68g
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;上面的方法限制了所有网卡出口和所有端口，如果要限制具体的网卡和端口，自行根据 iptables 规则修改就好了。&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
